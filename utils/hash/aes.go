@@ -18,8 +18,10 @@ import (
 	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/rand"
 	"encoding/base64"
 	"fmt"
+	"io"
 )
 
 const aesKey = "ZU9WbzRMVXRQZ2pzTGowR2hNWUpIZjRkWld4aWVRWko="
@@ -35,9 +37,16 @@ func AesEncrypt(origData []byte) (string, error) {
 	}
 	blockSize := block.BlockSize()
 	origData = pkcs7Padding(origData, blockSize)
-	blockMode := cipher.NewCBCEncrypter(block, key[:blockSize])
-	ciphertext := make([]byte, len(origData))
-	blockMode.CryptBlocks(ciphertext, origData)
+
+	// Create random IV
+	ciphertext := make([]byte, blockSize+len(origData))
+	iv := ciphertext[:blockSize]
+	if _, err := io.ReadFull(rand.Reader, iv); err != nil {
+		return "", err
+	}
+
+	blockMode := cipher.NewCBCEncrypter(block, iv)
+	blockMode.CryptBlocks(ciphertext[blockSize:], origData)
 	return base64.StdEncoding.EncodeToString(ciphertext), nil
 }
 
@@ -55,14 +64,23 @@ func AesDecrypt(ciphertext []byte) (string, error) {
 		return "", err
 	}
 	blockSize := block.BlockSize()
+
+	// Check if ciphertext is long enough to contain IV
 	if len(ciphertext) < blockSize {
-		return "", fmt.Errorf("ciphertext short than block size")
+		return "", fmt.Errorf("ciphertext too short")
 	}
 
-	plaintext := make([]byte, len(ciphertext))
-	mode := cipher.NewCBCDecrypter(block, key[:blockSize])
-	mode.CryptBlocks(plaintext, ciphertext)
-	plaintext = pkcs7UnPadding(plaintext)
+	iv := ciphertext[:blockSize]
+	ciphertext = ciphertext[blockSize:]
+
+	// Check validity after extracting IV
+	if len(ciphertext)%blockSize != 0 {
+		return "", fmt.Errorf("ciphertext is not a multiple of the block size")
+	}
+
+	mode := cipher.NewCBCDecrypter(block, iv)
+	mode.CryptBlocks(ciphertext, ciphertext)
+	plaintext := pkcs7UnPadding(ciphertext)
 	return string(plaintext), nil
 }
 
@@ -74,6 +92,12 @@ func pkcs7Padding(origData []byte, blockSize int) []byte {
 
 func pkcs7UnPadding(origData []byte) []byte {
 	length := len(origData)
+	if length == 0 {
+		return nil
+	}
 	unPadding := int(origData[length-1])
+	if length < unPadding {
+		return nil
+	}
 	return origData[:(length - unPadding)]
 }

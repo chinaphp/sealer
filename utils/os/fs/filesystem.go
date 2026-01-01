@@ -77,7 +77,7 @@ func (f filesystem) RemoveAll(path ...string) error {
 }
 
 func (f filesystem) MkdirAll(path string) error {
-	return os.MkdirAll(path, os.ModePerm)
+	return os.MkdirAll(path, 0750)
 }
 
 func (f filesystem) MkTmpdir(path string) (string, error) {
@@ -85,7 +85,7 @@ func (f filesystem) MkTmpdir(path string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return tempDir, os.MkdirAll(tempDir, os.ModePerm)
+	return tempDir, os.MkdirAll(tempDir, 0750)
 }
 
 func (f filesystem) CopyDir(srcPath, dstPath string) error {

@@ -267,6 +267,9 @@ func formattedSize(size int64) string {
 		formattedSize /= 1000
 		count++
 	}
+	if count >= len(suffixes) {
+		count = len(suffixes) - 1
+	}
 	return fmt.Sprintf("%.3g %s", formattedSize, suffixes[count])
 }
 

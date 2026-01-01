@@ -119,7 +119,7 @@ func main() {
 		panic(fmt.Errorf("could not write out the fetched CID: %s", err))
 	}
 
-	if err := os.MkdirAll(*targetDir, os.ModePerm); err != nil {
+	if err := os.MkdirAll(*targetDir, 0750); err != nil {
 		panic(fmt.Errorf("failed to create target directory: %s", err))
 	}
 

@@ -107,7 +107,7 @@ func (c *ClusterFile) SaveAll(opts SaveOptions) error {
 		plugin           []byte
 	)
 	fileName := common.GetDefaultClusterfile()
-	err := os.MkdirAll(filepath.Dir(fileName), os.ModePerm)
+	err := os.MkdirAll(filepath.Dir(fileName), 0750)
 	if err != nil {
 		return fmt.Errorf("failed to mkdir %s: %v", fileName, err)
 	}
