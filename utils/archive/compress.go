@@ -364,7 +364,9 @@ func Decompress(src io.Reader, dst string, options Options) (int64, error) {
 		switch header.Typeflag {
 		case tar.TypeDir:
 			if _, err = os.Stat(target); err != nil {
-				if err = os.MkdirAll(target, os.FileMode(header.Mode&0777)); err != nil { // #nosec G115
+				// #nosec G115
+				mode := os.FileMode(header.Mode & 0777)
+				if err = os.MkdirAll(target, mode); err != nil {
 					return 0, err
 				}
 				dirs = append(dirs, header)
