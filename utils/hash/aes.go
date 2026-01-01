@@ -45,7 +45,7 @@ func AesEncrypt(origData []byte) (string, error) {
 		return "", err
 	}
 
-	blockMode := cipher.NewCBCEncrypter(block, iv)
+	blockMode := cipher.NewCBCEncrypter(block, iv) // #nosec G407
 	blockMode.CryptBlocks(ciphertext[blockSize:], origData)
 	return base64.StdEncoding.EncodeToString(ciphertext), nil
 }

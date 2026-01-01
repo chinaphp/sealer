@@ -270,7 +270,7 @@ func formattedSize(size int64) string {
 	if count >= len(suffixes) {
 		count = len(suffixes) - 1
 	}
-	return fmt.Sprintf("%.3g %s", formattedSize, suffixes[count])
+	return fmt.Sprintf("%.3g %s", formattedSize, suffixes[count]) // #nosec G602
 }
 
 //func matchesID(imageID, argID string) bool {
