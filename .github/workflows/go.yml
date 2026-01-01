@@ -6,15 +6,14 @@ on:
   pull_request:
     branches: "*"
     paths-ignore:
-      - 'docs/**'
-      - '*.md'
-      - '*.yml'
-      - '.github'
+      - "docs/**"
+      - "*.md"
+      - "*.yml"
+      - ".github"
 jobs:
-
   build:
     name: ubuntu - Go v1.17
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
 
     steps:
       - name: Install deps
