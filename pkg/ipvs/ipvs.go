@@ -41,7 +41,8 @@ func GetCreateLvscareStaticPodCmd(content, fileName string) string {
 func LvsStaticPodYaml(podName, virtualEndpoint string, realEndpoints []string, image string,
 	healthPath string, healthSchem string) (string, error) {
 	if virtualEndpoint == "" || len(realEndpoints) == 0 || image == "" {
-		return "", fmt.Errorf("invalid args to create Lvs static pod")
+		return "", fmt.Errorf("invalid args to create Lvs static pod: podName=%s, virtualEndpoint=%s, realEndpointsLen=%d, image=%s",
+			podName, virtualEndpoint, len(realEndpoints), image)
 	}
 
 	args := []string{"care", "--vs", virtualEndpoint, "--health-path", healthPath, "--health-schem", healthSchem}
