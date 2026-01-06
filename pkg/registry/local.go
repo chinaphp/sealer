@@ -144,28 +144,28 @@ func (c *localConfigurator) configureRegistryNetwork(masters, nodes []net.IP) er
 		return c.configureSingletonHostsFile(append(masters, nodes...))
 	}
 
+	// Configure local host alias for registry nodes (performance optimization & loopback avoidance)
 	eg, _ := errgroup.WithContext(context.Background())
-
-	for i := range nodes {
-		node := nodes[i]
+	for i := range c.deployHosts {
+		deployHost := c.deployHosts[i]
 		eg.Go(func() error {
-			cmd := shellcommand.CommandSetHostAlias(c.Domain, node.String())
-			if err := c.infraDriver.CmdAsync(node, nil, cmd); err != nil {
-				return fmt.Errorf("failed to config masters hosts file: %v", err)
+			cmd := shellcommand.CommandSetHostAlias(c.Domain, deployHost.String())
+			if err := c.infraDriver.CmdAsync(deployHost, nil, cmd); err != nil {
+				return fmt.Errorf("failed to config registry hosts file: %v", err)
 			}
 			return nil
 		})
 	}
-
 	if err := eg.Wait(); err != nil {
 		return err
 	}
 
-	// if masters is nil, means no need to flush old nodes
-	if len(masters) == 0 {
-		return c.configureLvs(c.deployHosts, nodes)
-	}
-	return c.configureLvs(c.deployHosts, c.infraDriver.GetHostIPListByRole(common.NODE))
+	// Configure LVS for all other nodes (Masters + Workers that are not running registry)
+	// This ensures Masters can reach the registry (now on Workers) via VIP.
+	allHosts := append(masters, nodes...)
+	clientHosts := netutils.RemoveIPs(allHosts, c.deployHosts)
+
+	return c.configureLvs(c.deployHosts, clientHosts)
 }
 
 func (c *localConfigurator) configureLvs(registryHosts, clientHosts []net.IP) error {
