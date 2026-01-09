@@ -30,7 +30,7 @@ kind: InitConfiguration
 localAPIEndpoint:
   bindPort: 6443
 nodeRegistration:
-  criSocket: unix:///var/lib/containerdv2/state/containerd.sock
+  criSocket: unix:///run/containerd/containerd.sock
 
 ---
 apiVersion: kubeadm.k8s.io/v1beta4
@@ -169,7 +169,7 @@ caCertPath: /etc/kubernetes/pki/ca.crt
 discovery:
   timeout: 5m0s
 nodeRegistration:
-  criSocket: unix:///var/lib/containerdv2/state/containerd.sock
+  criSocket: unix:///run/containerd/containerd.sock
 controlPlane:
   localAPIEndpoint:
     bindPort: 6443
@@ -177,7 +177,7 @@ controlPlane:
 apiVersion: kubeadm.k8s.io/v1beta4
 kind: ResetConfiguration
 certificatesDir: /etc/kubernetes/pki
-criSocket: unix:///var/lib/containerdv2/state/containerd.sock
+criSocket: unix:///run/containerd/containerd.sock
 timeouts:
   controlPlaneComponentHealthCheck: 4m0s
   discovery: 5m0s
