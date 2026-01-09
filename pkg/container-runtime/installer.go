@@ -86,6 +86,7 @@ func NewInstaller(conf v2.ContainerRuntimeConfig, driver infradriver.InfraDriver
 				CertsDir:               DefaultContainerdCertsDir,
 				CRISocket:              DefaultContainerdCRISocket,
 				ContainerRuntimeConfig: conf,
+				ConfigFilePath:         filepath.Join(common.GetHomeDir(), ".docker", DockerConfigFileName),
 			},
 		}
 		ret.Info.CgroupDriver = DefaultCgroupDriver
