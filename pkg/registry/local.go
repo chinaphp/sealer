@@ -400,6 +400,7 @@ func (c *localConfigurator) configureContainerdDaemonService(endpoint, hostTomlF
 		HostConfigs: map[string]HostFileConfig{
 			url: {SkipServerVerify: true},
 		},
+		SkipServerVerify: true,
 	}
 
 	bs, err := toml.Marshal(cfg)
