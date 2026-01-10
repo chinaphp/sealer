@@ -333,7 +333,7 @@ func (c *localConfigurator) configureDaemonService(hosts []net.IP) error {
 
 	if c.containerRuntimeInfo.Type == common.Containerd {
 		src = filepath.Join(c.infraDriver.GetClusterRootfsPath(), "etc", "hosts.toml")
-		dest = filepath.Join(containerruntime.DefaultContainerdCertsDir, endpoint, "hosts.toml")
+		dest = filepath.Join(c.containerRuntimeInfo.CertsDir, endpoint, "hosts.toml")
 		if err := c.configureContainerdDaemonService(endpoint, src); err != nil {
 			return err
 		}
@@ -346,7 +346,12 @@ func (c *localConfigurator) configureDaemonService(hosts []net.IP) error {
 	for i := range hosts {
 		ip := hosts[i]
 		eg.Go(func() error {
-			err := c.infraDriver.Copy(ip, src, dest)
+			err := c.infraDriver.CmdAsync(ip, nil, fmt.Sprintf("mkdir -p %s", filepath.Dir(dest)))
+			if err != nil {
+				return err
+			}
+
+			err = c.infraDriver.Copy(ip, src, dest)
 			if err != nil {
 				return err
 			}
