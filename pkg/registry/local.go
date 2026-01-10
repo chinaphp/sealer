@@ -346,28 +346,56 @@ func (c *localConfigurator) configureDaemonService(hosts []net.IP) error {
 	for i := range hosts {
 		ip := hosts[i]
 		eg.Go(func() error {
+			// Step 1: Create directory for hosts.toml
 			err := c.infraDriver.CmdAsync(ip, nil, fmt.Sprintf("mkdir -p %s", filepath.Dir(dest)))
 			if err != nil {
-				return err
+				return fmt.Errorf("failed to create directory %s: %v", filepath.Dir(dest), err)
 			}
 
+			// Step 2: Copy hosts.toml to the target location
 			err = c.infraDriver.Copy(ip, src, dest)
 			if err != nil {
-				return err
+				return fmt.Errorf("failed to copy hosts.toml to %s: %v", dest, err)
 			}
 
+			// Step 3: Verify hosts.toml was created
+			verifyCmd := fmt.Sprintf("ls -la %s", dest)
+			logrus.Debugf("Verifying hosts.toml on %s: %s", ip, verifyCmd)
+			err = c.infraDriver.CmdAsync(ip, nil, verifyCmd)
+			if err != nil {
+				logrus.Warnf("hosts.toml verification failed on %s: %v", ip, err)
+			}
+
+			// Step 4: Update config.toml to use the correct config_path
 			configTomlPath := "/etc/containerd/config.toml"
 			// Use a more robust sed to match config_path even with different spacing/indents
 			updateConfigPathCmd := fmt.Sprintf("if [ -f %s ]; then sed -i 's|[[:space:]]*config_path[[:space:]]*=[[:space:]]*.*|      config_path = \"%s\"|g' %s; fi", configTomlPath, c.containerRuntimeInfo.CertsDir, configTomlPath)
 			err = c.infraDriver.CmdAsync(ip, nil, updateConfigPathCmd)
 			if err != nil {
-				return err
+				return fmt.Errorf("failed to update config_path in %s: %v", configTomlPath, err)
 			}
 
+			// Step 5: Verify the config_path was updated
+			verifyConfigCmd := fmt.Sprintf("grep config_path %s", configTomlPath)
+			logrus.Debugf("Verifying config_path on %s", ip)
+			err = c.infraDriver.CmdAsync(ip, nil, verifyConfigCmd)
+			if err != nil {
+				logrus.Warnf("config_path verification failed on %s: %v", ip, err)
+			}
+
+			// Step 6: Restart containerd to apply changes
 			err = c.infraDriver.CmdAsync(ip, nil, "systemctl daemon-reload && systemctl restart containerd")
+			if err != nil {
+				return fmt.Errorf("failed to restart containerd on %s: %v", ip, err)
+			}
+
+			// Step 7: Wait a moment for containerd to fully restart
+			err = c.infraDriver.CmdAsync(ip, nil, "sleep 2")
 			if err != nil {
 				return err
 			}
+
+			logrus.Infof("Successfully configured containerd registry on %s", ip)
 			return nil
 		})
 	}
@@ -412,18 +440,24 @@ func (c *localConfigurator) configureContainerdDaemonService(endpoint, hostTomlF
 		url = "http://" + endpoint
 	}
 
+	// Generate hosts.toml with proper format for containerd
+	// Reference: https://github.com/containerd/containerd/blob/main/docs/hosts.md
 	cfg := Hosts{
 		Server: url,
 		HostConfigs: map[string]HostFileConfig{
-			url: {SkipServerVerify: true},
+			url: {
+				Capabilities:     []string{"pull", "resolve"},
+				SkipServerVerify: true,
+			},
 		},
-		SkipServerVerify: true,
 	}
 
 	bs, err := toml.Marshal(cfg)
 	if err != nil {
 		return fmt.Errorf("failed to marshal containerd hosts.toml file: %v", err)
 	}
+
+	logrus.Debugf("Generated hosts.toml for %s:\n%s", endpoint, string(bs))
 
 	return osutils.NewCommonWriter(hostTomlFile).WriteFile(bs)
 }
@@ -433,17 +467,18 @@ type Hosts struct {
 	// also specified, those hosts are tried first.
 	Server string `toml:"server"`
 	// HostConfigs store the per-host configuration
-	HostConfigs      map[string]HostFileConfig `toml:"host"`
-	SkipServerVerify bool                      `toml:"skip_verify"`
+	HostConfigs map[string]HostFileConfig `toml:"host"`
 }
 
 type HostFileConfig struct {
+	// Capabilities define what operations are supported
+	Capabilities []string `toml:"capabilities,omitempty"`
 	// CACert are the public key certificates for TLS
 	// Accepted types
 	// - string - Single file with certificate(s)
 	// - []string - Multiple files with certificates
-	// CACert           interface{} `toml:"ca"`
-	SkipServerVerify bool `toml:"skip_verify"`
+	// CACert           interface{} `toml:"ca,omitempty"`
+	SkipServerVerify bool `toml:"skip_verify,omitempty"`
 }
 
 type DaemonConfig struct {
