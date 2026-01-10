@@ -401,11 +401,15 @@ func (c *localConfigurator) configureDockerDaemonService(endpoint, daemonFile st
 }
 
 func (c *localConfigurator) configureContainerdDaemonService(endpoint, hostTomlFile string) error {
-	var (
-		// caFile             = c.Domain + ".crt"
-		// registryCaCertPath = filepath.Join(c.containerRuntimeInfo.CertsDir, endpoint, caFile)
+	insecure := false
+	if c.Insecure != nil {
+		insecure = *c.Insecure
+	}
+
+	url := "https://" + endpoint
+	if insecure {
 		url = "http://" + endpoint
-	)
+	}
 
 	cfg := Hosts{
 		Server: url,

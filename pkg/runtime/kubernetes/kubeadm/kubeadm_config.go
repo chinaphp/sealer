@@ -20,6 +20,7 @@ import (
 	"net"
 	"strings"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm/v1beta3"
 
 	versionUtils "github.com/sealerio/sealer/utils/version"
@@ -262,6 +263,21 @@ func (k *KubeadmConfig) GetMarshableConfigs() []interface{} {
 	clusterCfg := k.ClusterConfiguration
 	joinCfg := k.JoinConfiguration
 
+	type TimeoutsV1beta4 struct {
+		ControlPlaneComponentHealthCheck *metav1.Duration `json:"controlPlaneComponentHealthCheck,omitempty" yaml:"controlPlaneComponentHealthCheck,omitempty"`
+		Discovery                        *metav1.Duration `json:"discovery,omitempty" yaml:"discovery,omitempty"`
+		EtcdAPICall                      *metav1.Duration `json:"etcdAPICall,omitempty" yaml:"etcdAPICall,omitempty"`
+		KubeletHealthCheck               *metav1.Duration `json:"kubeletHealthCheck,omitempty" yaml:"kubeletHealthCheck,omitempty"`
+		KubernetesAPICall                *metav1.Duration `json:"kubernetesAPICall,omitempty" yaml:"kubernetesAPICall,omitempty"`
+		TLSBootstrap                     *metav1.Duration `json:"tlsBootstrap,omitempty" yaml:"tlsBootstrap,omitempty"`
+		UpgradeManifests                 *metav1.Duration `json:"upgradeManifests,omitempty" yaml:"upgradeManifests,omitempty"`
+	}
+
+	type DiscoveryV1beta4 struct {
+		v1beta3.Discovery `json:",inline" yaml:",inline"`
+		Timeout           *metav1.Duration `json:"timeout,omitempty" yaml:"timeout,omitempty"`
+	}
+
 	// Convert maps to slices for v1beta4
 	type InitCfgV1beta4 struct {
 		v1beta3.InitConfiguration `json:",inline" yaml:",inline"`
@@ -269,6 +285,7 @@ func (k *KubeadmConfig) GetMarshableConfigs() []interface{} {
 			v1beta3.NodeRegistrationOptions `json:",inline" yaml:",inline"`
 			ExtraArgs                       []ArgV1beta4 `json:"extraArgs,omitempty" yaml:"extraArgs,omitempty"`
 		} `json:"nodeRegistration,omitempty" yaml:"nodeRegistration,omitempty"`
+		Timeouts *TimeoutsV1beta4 `json:"timeouts,omitempty" yaml:"timeouts,omitempty"`
 	}
 
 	type ClusterCfgV1beta4 struct {
@@ -300,6 +317,8 @@ func (k *KubeadmConfig) GetMarshableConfigs() []interface{} {
 			v1beta3.NodeRegistrationOptions `json:",inline" yaml:",inline"`
 			ExtraArgs                       []ArgV1beta4 `json:"extraArgs,omitempty" yaml:"extraArgs,omitempty"`
 		} `json:"nodeRegistration,omitempty" yaml:"nodeRegistration,omitempty"`
+		Discovery DiscoveryV1beta4 `json:"discovery" yaml:"discovery"`
+		Timeouts  *TimeoutsV1beta4 `json:"timeouts,omitempty" yaml:"timeouts,omitempty"`
 	}
 
 	var iV4 InitCfgV1beta4
@@ -329,6 +348,14 @@ func (k *KubeadmConfig) GetMarshableConfigs() []interface{} {
 	jV4.JoinConfiguration = joinCfg
 	jV4.NodeRegistration.NodeRegistrationOptions = joinCfg.NodeRegistration
 	jV4.NodeRegistration.ExtraArgs = mapToArgsV1beta4(joinCfg.NodeRegistration.KubeletExtraArgs)
+	jV4.Discovery.Discovery = joinCfg.Discovery
+	jV4.Discovery.Discovery.Timeout = nil // Explicitly clear the embedded field
+	jV4.Discovery.Timeout = nil           // Also clear the shadowed field
+	if joinCfg.Discovery.Timeout != nil {
+		jV4.Timeouts = &TimeoutsV1beta4{
+			Discovery: joinCfg.Discovery.Timeout,
+		}
+	}
 
 	return []interface{}{
 		&iV4,
