@@ -56,11 +56,7 @@ func (k *Runtime) initKubeadmConfig(masters []net.IP) (kubeadm.KubeadmConfig, er
 		conf.InitConfiguration.NodeRegistration.CRISocket = output
 	}
 
-	bs, err := yaml.MarshalWithDelimiter(&conf.InitConfiguration,
-		&conf.ClusterConfiguration,
-		&conf.KubeletConfiguration,
-		&conf.KubeProxyConfiguration,
-		&conf.JoinConfiguration)
+	bs, err := yaml.MarshalWithDelimiter(conf.GetMarshableConfigs()...)
 	if err != nil {
 		return kubeadm.KubeadmConfig{}, err
 	}

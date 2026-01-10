@@ -231,3 +231,110 @@ func NewKubeadmConfig(fromClusterFile KubeadmConfig, fromFile string, masters []
 
 	return conf, nil
 }
+
+type ArgV1beta4 struct {
+	Name  string `json:"name" yaml:"name"`
+	Value string `json:"value" yaml:"value"`
+}
+
+func mapToArgsV1beta4(m map[string]string) []ArgV1beta4 {
+	var args []ArgV1beta4
+	for k, v := range m {
+		args = append(args, ArgV1beta4{Name: k, Value: v})
+	}
+	return args
+}
+
+// GetMarshableConfigs returns configs in a format that can be marshaled based on apiVersion
+func (k *KubeadmConfig) GetMarshableConfigs() []interface{} {
+	if k.InitConfiguration.APIVersion != KubeadmV1beta4 {
+		return []interface{}{
+			&k.InitConfiguration,
+			&k.ClusterConfiguration,
+			&k.KubeletConfiguration,
+			&k.KubeProxyConfiguration,
+			&k.JoinConfiguration,
+		}
+	}
+
+	// Handle v1beta4
+	initCfg := k.InitConfiguration
+	clusterCfg := k.ClusterConfiguration
+	joinCfg := k.JoinConfiguration
+
+	// Convert maps to slices for v1beta4
+	type InitCfgV1beta4 struct {
+		v1beta3.InitConfiguration `json:",inline" yaml:",inline"`
+		NodeRegistration          struct {
+			v1beta3.NodeRegistrationOptions `json:",inline" yaml:",inline"`
+			ExtraArgs                       []ArgV1beta4 `json:"extraArgs,omitempty" yaml:"extraArgs,omitempty"`
+		} `json:"nodeRegistration,omitempty" yaml:"nodeRegistration,omitempty"`
+	}
+
+	type ClusterCfgV1beta4 struct {
+		v1beta3.ClusterConfiguration `json:",inline" yaml:",inline"`
+		APIServer                    struct {
+			v1beta3.APIServer `json:",inline" yaml:",inline"`
+			ExtraArgs         []ArgV1beta4 `json:"extraArgs,omitempty" yaml:"extraArgs,omitempty"`
+		} `json:"apiServer,omitempty" yaml:"apiServer,omitempty"`
+		ControllerManager struct {
+			v1beta3.ControlPlaneComponent `json:",inline" yaml:",inline"`
+			ExtraArgs                     []ArgV1beta4 `json:"extraArgs,omitempty" yaml:"extraArgs,omitempty"`
+		} `json:"controllerManager,omitempty" yaml:"controllerManager,omitempty"`
+		Scheduler struct {
+			v1beta3.ControlPlaneComponent `json:",inline" yaml:",inline"`
+			ExtraArgs                     []ArgV1beta4 `json:"extraArgs,omitempty" yaml:"extraArgs,omitempty"`
+		} `json:"scheduler,omitempty" yaml:"scheduler,omitempty"`
+		Etcd struct {
+			v1beta3.Etcd `json:",inline" yaml:",inline"`
+			Local        *struct {
+				v1beta3.LocalEtcd `json:",inline" yaml:",inline"`
+				ExtraArgs         []ArgV1beta4 `json:"extraArgs,omitempty" yaml:"extraArgs,omitempty"`
+			} `json:"local,omitempty" yaml:"local,omitempty"`
+		} `json:"etcd,omitempty" yaml:"etcd,omitempty"`
+	}
+
+	type JoinCfgV1beta4 struct {
+		v1beta3.JoinConfiguration `json:",inline" yaml:",inline"`
+		NodeRegistration          struct {
+			v1beta3.NodeRegistrationOptions `json:",inline" yaml:",inline"`
+			ExtraArgs                       []ArgV1beta4 `json:"extraArgs,omitempty" yaml:"extraArgs,omitempty"`
+		} `json:"nodeRegistration,omitempty" yaml:"nodeRegistration,omitempty"`
+	}
+
+	var iV4 InitCfgV1beta4
+	iV4.InitConfiguration = initCfg
+	iV4.NodeRegistration.NodeRegistrationOptions = initCfg.NodeRegistration
+	iV4.NodeRegistration.ExtraArgs = mapToArgsV1beta4(initCfg.NodeRegistration.KubeletExtraArgs)
+
+	var cV4 ClusterCfgV1beta4
+	cV4.ClusterConfiguration = clusterCfg
+	cV4.APIServer.APIServer = clusterCfg.APIServer
+	cV4.APIServer.ExtraArgs = mapToArgsV1beta4(clusterCfg.APIServer.ExtraArgs)
+	cV4.ControllerManager.ControlPlaneComponent = clusterCfg.ControllerManager
+	cV4.ControllerManager.ExtraArgs = mapToArgsV1beta4(clusterCfg.ControllerManager.ExtraArgs)
+	cV4.Scheduler.ControlPlaneComponent = clusterCfg.Scheduler
+	cV4.Scheduler.ExtraArgs = mapToArgsV1beta4(clusterCfg.Scheduler.ExtraArgs)
+	cV4.Etcd.Etcd = clusterCfg.Etcd
+	if clusterCfg.Etcd.Local != nil {
+		cV4.Etcd.Local = &struct {
+			v1beta3.LocalEtcd `json:",inline" yaml:",inline"`
+			ExtraArgs         []ArgV1beta4 `json:"extraArgs,omitempty" yaml:"extraArgs,omitempty"`
+		}{}
+		cV4.Etcd.Local.LocalEtcd = *clusterCfg.Etcd.Local
+		cV4.Etcd.Local.ExtraArgs = mapToArgsV1beta4(clusterCfg.Etcd.Local.ExtraArgs)
+	}
+
+	var jV4 JoinCfgV1beta4
+	jV4.JoinConfiguration = joinCfg
+	jV4.NodeRegistration.NodeRegistrationOptions = joinCfg.NodeRegistration
+	jV4.NodeRegistration.ExtraArgs = mapToArgsV1beta4(joinCfg.NodeRegistration.KubeletExtraArgs)
+
+	return []interface{}{
+		&iV4,
+		&cV4,
+		&k.KubeletConfiguration,
+		&k.KubeProxyConfiguration,
+		&jV4,
+	}
+}
