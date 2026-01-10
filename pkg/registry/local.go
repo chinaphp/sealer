@@ -356,7 +356,14 @@ func (c *localConfigurator) configureDaemonService(hosts []net.IP) error {
 				return err
 			}
 
-			err = c.infraDriver.CmdAsync(ip, nil, "systemctl daemon-reload")
+			configTomlPath := "/etc/containerd/config.toml"
+			updateConfigPathCmd := fmt.Sprintf("if [ -f %s ]; then sed -i 's|config_path = .*|config_path = \"%s\"|g' %s; fi", configTomlPath, c.containerRuntimeInfo.CertsDir, configTomlPath)
+			err = c.infraDriver.CmdAsync(ip, nil, updateConfigPathCmd)
+			if err != nil {
+				return err
+			}
+
+			err = c.infraDriver.CmdAsync(ip, nil, "systemctl daemon-reload && systemctl restart containerd")
 			if err != nil {
 				return err
 			}
