@@ -357,7 +357,8 @@ func (c *localConfigurator) configureDaemonService(hosts []net.IP) error {
 			}
 
 			configTomlPath := "/etc/containerd/config.toml"
-			updateConfigPathCmd := fmt.Sprintf("if [ -f %s ]; then sed -i 's|config_path = .*|config_path = \"%s\"|g' %s; fi", configTomlPath, c.containerRuntimeInfo.CertsDir, configTomlPath)
+			// Use a more robust sed to match config_path even with different spacing/indents
+			updateConfigPathCmd := fmt.Sprintf("if [ -f %s ]; then sed -i 's|[[:space:]]*config_path[[:space:]]*=[[:space:]]*.*|      config_path = \"%s\"|g' %s; fi", configTomlPath, c.containerRuntimeInfo.CertsDir, configTomlPath)
 			err = c.infraDriver.CmdAsync(ip, nil, updateConfigPathCmd)
 			if err != nil {
 				return err

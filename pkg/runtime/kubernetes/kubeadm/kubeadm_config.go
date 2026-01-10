@@ -274,8 +274,9 @@ func (k *KubeadmConfig) GetMarshableConfigs() []interface{} {
 	}
 
 	type DiscoveryV1beta4 struct {
-		v1beta3.Discovery `json:",inline" yaml:",inline"`
-		Timeout           *metav1.Duration `json:"timeout,omitempty" yaml:"timeout,omitempty"`
+		BootstrapToken    *v1beta3.BootstrapTokenDiscovery `json:"bootstrapToken,omitempty" yaml:"bootstrapToken,omitempty"`
+		File              *v1beta3.FileDiscovery           `json:"file,omitempty" yaml:"file,omitempty"`
+		TLSBootstrapToken string                           `json:"tlsBootstrapToken,omitempty" yaml:"tlsBootstrapToken,omitempty"`
 	}
 
 	// Convert maps to slices for v1beta4
@@ -348,9 +349,12 @@ func (k *KubeadmConfig) GetMarshableConfigs() []interface{} {
 	jV4.JoinConfiguration = joinCfg
 	jV4.NodeRegistration.NodeRegistrationOptions = joinCfg.NodeRegistration
 	jV4.NodeRegistration.ExtraArgs = mapToArgsV1beta4(joinCfg.NodeRegistration.KubeletExtraArgs)
-	jV4.Discovery.Discovery = joinCfg.Discovery
-	jV4.Discovery.Discovery.Timeout = nil // Explicitly clear the embedded field
-	jV4.Discovery.Timeout = nil           // Also clear the shadowed field
+
+	// Explicit mapping to avoid any hidden fields From v1beta3.Discovery
+	jV4.Discovery.BootstrapToken = joinCfg.Discovery.BootstrapToken
+	jV4.Discovery.File = joinCfg.Discovery.File
+	jV4.Discovery.TLSBootstrapToken = joinCfg.Discovery.TLSBootstrapToken
+
 	if joinCfg.Discovery.Timeout != nil {
 		jV4.Timeouts = &TimeoutsV1beta4{
 			Discovery: joinCfg.Discovery.Timeout,
