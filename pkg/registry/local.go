@@ -415,7 +415,8 @@ type Hosts struct {
 	// also specified, those hosts are tried first.
 	Server string `toml:"server"`
 	// HostConfigs store the per-host configuration
-	HostConfigs map[string]HostFileConfig `toml:"host"`
+	HostConfigs      map[string]HostFileConfig `toml:"host"`
+	SkipServerVerify bool                      `toml:"skip_verify"`
 }
 
 type HostFileConfig struct {
