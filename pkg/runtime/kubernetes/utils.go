@@ -187,7 +187,10 @@ func GetClientFromConfig(adminConfPath string) (runtimeClient.Client, error) {
 }
 
 func (k *Runtime) configureLvs(masterHosts, clientHosts []net.IP) error {
-	lvsImageURL := common.LvsCareRepoAndTag
+	// Use local registry for lvscare image to support offline deployment
+	// Get registry URL from cluster config and construct image reference
+	// Format: registry.url/sealerio/lvscare:v1.1.3-beta.8
+	lvsImageURL := fmt.Sprintf("%s/%s", k.Config.RegistryInfo.URL, common.LvsCareRepoAndTag)
 
 	var rs []string
 	var realEndpoints []string

@@ -179,8 +179,9 @@ func (c *localConfigurator) configureLvs(registryHosts, clientHosts []net.IP) er
 		realEndpoints = append(realEndpoints, ep)
 	}
 
-	//todo should make lvs image name as const value in sealer repo.
-	lvsImageURL := common.LvsCareRepoAndTag
+	// Use local registry for lvscare image to support offline deployment
+	// Format: registry.domain:port/sealerio/lvscare:v1.1.3-beta.8
+	lvsImageURL := fmt.Sprintf("%s/%s", net.JoinHostPort(c.Domain, strconv.Itoa(c.Port)), common.LvsCareRepoAndTag)
 
 	vip := GetRegistryVIP(c.infraDriver)
 
